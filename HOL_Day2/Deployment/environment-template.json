@@ -1,0 +1,235 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "KeyVaultAccessPolicyUserObjectId": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "ObjectId for the Azure AD User running the Template Deployment"
+            }
+        }
+    },
+    "variables": {
+        "name_suffix": "[uniqueString(resourceGroup().id)]",
+        "primary_region": "Korea Central",
+        "secondary_region": "Korea South",
+
+        "cosmosdb_databaseAccount_name": "[concat('woodgrove-db-', variables('name_suffix'))]",
+        "cosmosdb_region": "[variables('primary_region')]",
+        "cosmosdb_region_secondary": "[variables('secondary_region')]",
+        "cosmosdb_databaseName": "Woodgrove",
+        "cosmosdb_containerName": "transactions",
+        "cosmosdb_database_throughput": "15000",
+
+        "datalake_storageAccount_name": "[concat('adlsgen2stg', variables('name_suffix'))]",
+        "datalake_region": "[variables('primary_region')]",
+
+        "databricks_name": "[concat('cosmosdb-mcw-', variables('name_suffix'))]",
+        "databricks_region": "[variables('primary_region')]",
+
+        "keyvault_name": "[concat('woodgrove-', variables('name_suffix'))]",
+        "keyvault_region": "[variables('primary_region')]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.DocumentDB/databaseAccounts",
+            "apiVersion": "2016-03-31",
+            "name": "[variables('cosmosdb_databaseAccount_name')]",
+            "location": "[variables('cosmosdb_region')]",
+            "kind": "GlobalDocumentDB",
+            "properties": {
+                "enableAutomaticFailover": false,
+                "enableMultipleWriteLocations": true,
+                "databaseAccountOfferType": "Standard",
+                "consistencyPolicy": {
+                    "defaultConsistencyLevel": "Session"
+                },
+                "locations": [
+                    {
+                        "locationName": "[variables('cosmosdb_region')]",
+                        "failoverPriority": 0
+                    },
+                    {
+                        "locationName": "[variables('cosmosdb_region_secondary')]",
+                        "failoverPriority": 1
+                    }
+                ]
+            }
+        },
+        {
+			"type": "Microsoft.DocumentDB/databaseAccounts/apis/databases",
+			"name": "[concat(variables('cosmosdb_databaseAccount_name'), '/sql/', variables('cosmosdb_databaseName'))]",
+			"apiVersion": "2016-03-31",
+			"dependsOn": [ "[resourceId('Microsoft.DocumentDB/databaseAccounts/', variables('cosmosdb_databaseAccount_name'))]" ],
+			"properties":{
+				"resource":{
+					"id": "[variables('cosmosdb_databaseName')]"
+				},
+				"options": { "throughput": "[variables('cosmosdb_database_throughput')]" }
+			}
+        },
+        {
+			"type": "Microsoft.DocumentDb/databaseAccounts/apis/databases/containers",
+			"name": "[concat(variables('cosmosdb_databaseAccount_name'), '/sql/', variables('cosmosdb_databaseName'), '/', variables('cosmosdb_containerName'))]",
+			"apiVersion": "2016-03-31",
+			"dependsOn": [ "[resourceId('Microsoft.DocumentDB/databaseAccounts/apis/databases', variables('cosmosdb_databaseAccount_name'), 'sql', variables('cosmosdb_databaseName'))]" ],
+			"properties":
+			{
+				"resource":{
+					"id":  "[variables('cosmosdb_containerName')]",
+					"partitionKey": {
+						"paths": [
+                            "/ipCountryCode"
+						],
+						"kind": "Hash"
+					},
+					"indexingPolicy": {
+						"indexingMode": "consistent",
+						"includedPaths": [{
+								"path": "/*",
+								"indexes": [
+									{
+										"kind": "Range",
+										"dataType": "number",
+										"precision": -1
+									},
+									{
+										"kind": "Range",
+										"dataType": "string",
+										"precision": -1
+									}
+								]
+							}
+						]
+					}
+				}
+			}
+        },
+        
+
+
+
+
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2018-07-01",
+            "name": "[variables('datalake_storageAccount_name')]",
+            "location": "[variables('datalake_region')]",
+            "sku": {
+                "name": "Standard_LRS",
+                "tier": "Standard"
+            },
+            "kind": "StorageV2",
+            "properties": {
+                "isHnsEnabled": true,
+                "networkAcls": {
+                    "bypass": "AzureServices",
+                    "virtualNetworkRules": [],
+                    "ipRules": [],
+                    "defaultAction": "Allow"
+                },
+                "supportsHttpsTrafficOnly": true,
+                "encryption": {
+                    "services": {
+                        "file": {
+                            "enabled": true
+                        },
+                        "blob": {
+                            "enabled": true
+                        }
+                    },
+                    "keySource": "Microsoft.Storage"
+                },
+                "accessTier": "Hot"
+            }
+        },
+
+
+
+        
+
+
+        {
+            "type": "Microsoft.Databricks/workspaces",
+            "apiVersion": "2018-04-01",
+            "name": "[variables('databricks_name')]",
+            "location": "[variables('databricks_region')]",
+            "sku": {
+              "name": "premium"
+            },
+            "properties": {
+                "managedResourceGroupId": "[concat(resourceGroup().id, '-databricks')]"
+            }
+        },
+
+
+
+
+        {
+            "type": "Microsoft.KeyVault/vaults",
+            "apiVersion": "2016-10-01",
+            "name": "[variables('keyvault_name')]",
+            "location": "[variables('keyvault_region')]",
+            "properties": {
+                "managedResourceGroupId": "[resourceGroup().id]",
+                "sku": {
+                    "family": "A",
+                    "name": "Standard"
+                },
+                "tenantId": "[subscription().tenantId]",
+                "accessPolicies": [
+                    {
+                        "tenantId": "[subscription().tenantId]",
+                        "objectId": "[parameters('KeyVaultAccessPolicyUserObjectId')]",
+                        "permissions": {
+                            "keys": [
+                                "Get",
+                                "List",
+                                "Update",
+                                "Create",
+                                "Import",
+                                "Delete",
+                                "Recover",
+                                "Backup",
+                                "Restore"
+                            ],
+                            "secrets": [
+                                "Get",
+                                "List",
+                                "Set",
+                                "Delete",
+                                "Recover",
+                                "Backup",
+                                "Restore"
+                            ],
+                            "certificates": [
+                                "Get",
+                                "List",
+                                "Update",
+                                "Create",
+                                "Import",
+                                "Delete",
+                                "Recover",
+                                "Backup",
+                                "Restore",
+                                "ManageContacts",
+                                "ManageIssuers",
+                                "GetIssuers",
+                                "ListIssuers",
+                                "SetIssuers",
+                                "DeleteIssuers"
+                            ]
+                        }
+                    }
+                ],
+                "enabledForDeployment": false,
+                "enabledForDiskEncryption": false,
+                "enabledForTemplateDeployment": false
+            }
+        }
+
+
+
+    ]
+}
