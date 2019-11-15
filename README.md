@@ -1,0 +1,2 @@
+# CloudScaleAnalytics
+CloudScaleAnalytics Workshop Prep
