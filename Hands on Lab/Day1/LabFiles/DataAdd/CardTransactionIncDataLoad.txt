@@ -1,0 +1,4 @@
+load data local infile './CardTrxIncreData.csv'
+into table cohoOLTP.CardTransaction
+fields terminated by ','
+lines terminated by '\r\n';
