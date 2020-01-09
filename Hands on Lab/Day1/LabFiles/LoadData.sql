@@ -31,38 +31,3 @@ INSERT INTO [dbo].[SalesByDate] SELECT [SalesAmount],[EnglishMonthName],[Calenda
 INSERT INTO [dbo].[SalesByRegion] SELECT [SalesAmount],[PostalCode],[StateProvinceCode] FROM [dbo].[SalesByRegion_External]
 INSERT INTO [dbo].[vDMPrep] SELECT [EnglishProductCategoryName],[Model],[CustomerKey],[Region],[Age],[IncomeGroup],[CalendarYear],[FiscalYear],[Month],[OrderNumber],[LineNumber],[Quantity],[Amount] FROM [dbo].[vDMPrep_External]
 INSERT INTO [dbo].[vTargetMail] SELECT [CustomerKey],[GeographyKey],[CustomerAlternateKey],[Title],[FirstName],[MiddleName],[LastName],[NameStyle],[BirthDate],[MaritalStatus],[Suffix],[Gender],[EmailAddress],[YearlyIncome],[TotalChildren],[NumberChildrenAtHome],[EnglishEducation],[SpanishEducation],[FrenchEducation],[EnglishOccupation],[SpanishOccupation],[FrenchOccupation],[HouseOwnerFlag],[NumberCarsOwned],[AddressLine1],[AddressLine2],[Phone],[DateFirstPurchase],[CommuteDistance],[Region],[Age],[BikeBuyer] FROM [dbo].[vTargetMail_External]
-
-
-
-
---These tables are used by an SSIS package later in the lab
-CREATE TABLE dbo.FactInternetSales_STAGE
-(
-  ProductKey INT NOT NULL,
-  CustomerKey INT NOT NULL,
-  OrderDateKey INT NOT NULL,
-  OrderNumber INT NOT NULL,
-  OrderQty SMALLINT NOT NULL,
-  SalesAmt MONEY NOT NULL
-)
-WITH
-(
-  CLUSTERED COLUMNSTORE INDEX,
-  DISTRIBUTION = ROUND_ROBIN
-);
-
-CREATE TABLE dbo.FactResellerSales_STAGE
-(
-  ProductKey INT NOT NULL,
-  CustomerKey INT NOT NULL,
-  OrderDateKey INT NOT NULL,
-  OrderNumber INT NOT NULL,
-  SalesPersonKey INT NULL,
-  OrderQty SMALLINT NOT NULL,
-  SalesAmt MONEY NOT NULL
-)
-WITH
-(
-  CLUSTERED COLUMNSTORE INDEX,
-  DISTRIBUTION = ROUND_ROBIN
-);
