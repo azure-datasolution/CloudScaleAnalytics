@@ -13,14 +13,13 @@
     "variables": {
         "name_suffix": "[uniqueString(resourceGroup().id)]",
         "primary_region": "Korea Central",
-        "secondary_region": "Korea South",
 
         "cosmosdb_databaseAccount_name": "[concat('woodgrove-db-', variables('name_suffix'))]",
         "cosmosdb_region": "[variables('primary_region')]",
         "cosmosdb_region_secondary": "[variables('secondary_region')]",
         "cosmosdb_databaseName": "Woodgrove",
         "cosmosdb_containerName": "transactions",
-        "cosmosdb_database_throughput": "15000",
+        "cosmosdb_database_throughput": "10000",
 
         "datalake_storageAccount_name": "[concat('adlsgen2stg', variables('name_suffix'))]",
         "datalake_region": "[variables('primary_region')]",
